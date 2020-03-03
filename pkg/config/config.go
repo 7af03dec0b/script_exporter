@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/ioutil"
+	"log"
 
 	"gopkg.in/yaml.v2"
 )
@@ -34,9 +35,9 @@ type Config struct {
 	} `yaml:"bearerAuth"`
 
 	Scripts []struct {
-		Name    string `yaml:"name"`
-		Script  string `yaml:"script"`
-		Timeout timeout
+		Name    string  `yaml:"name"`
+		Script  string  `yaml:"script"`
+		Timeout timeout `yaml:"timeout"`
 	} `yaml:"scripts"`
 }
 
@@ -51,7 +52,6 @@ func (c *Config) LoadConfig(file string) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -62,7 +62,6 @@ func (c *Config) GetScript(scriptName string) string {
 			return script.Script
 		}
 	}
-
 	return ""
 }
 
@@ -71,9 +70,9 @@ func (c *Config) GetMaxTimeout(scriptName string) float64 {
 	for _, script := range c.Scripts {
 		if script.Name == scriptName {
 			if script.Timeout.MaxTimeout != nil {
+				log.Printf("%s has timeout%f\n", scriptName, *script.Timeout.MaxTimeout)
 				return *script.Timeout.MaxTimeout
 			}
-			break
 		}
 	}
 	return 0
@@ -85,9 +84,9 @@ func (c *Config) GetTimeoutEnforced(scriptName string) bool {
 	for _, script := range c.Scripts {
 		if script.Name == scriptName {
 			if script.Timeout.Enforced != nil {
+				log.Printf("%s has force timeout\n", scriptName)
 				return *script.Timeout.Enforced
 			}
-			break
 		}
 	}
 	return false

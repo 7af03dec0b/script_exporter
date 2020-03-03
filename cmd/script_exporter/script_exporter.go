@@ -126,6 +126,12 @@ func getTimeout(r *http.Request, offset float64, maxTimeout float64) float64 {
 	}
 	ts, err := strconv.ParseFloat(v, 64)
 	adjusted := ts - offset
+	if maxTimeout > adjusted {
+		s := r.URL.Query().Get("script")
+		if s != "" {
+			log.Printf("Please check scrape timeout vs script timeout for script %s", s)
+		}
+	}
 	switch {
 	case err != nil:
 		return 0
@@ -199,7 +205,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get and run script
 	script := exporterConfig.GetScript(scriptName)
 	if script == "" {
-		log.Printf("Script not found\n")
+		log.Printf("Script %s not found\n", scriptName)
 		http.Error(w, "Script not found", http.StatusBadRequest)
 		return
 	}
@@ -211,7 +217,8 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	output, err := runScript(timeout, exporterConfig.GetTimeoutEnforced(scriptName), append(strings.Split(script, " "), paramValues...))
 	if err != nil {
-		log.Printf("Script failed: %s\n", err.Error())
+		log.Printf("Script %s failed: %s\n", scriptName, err.Error())
+		log.Printf("%s", append(strings.Split(script, " "), paramValues...))
 		fmt.Fprintf(w, "%s\n%s\n%s_success{} %d\n%s\n%s\n%s_duration_seconds{} %f\n", scriptSuccessHelp, scriptSuccessType, namespace, 0, scriptDurationSecondsHelp, scriptDurationSecondsType, namespace, time.Since(scriptStartTime).Seconds())
 		return
 	}
@@ -237,7 +244,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 			// Do nothing
 		} else if metric[0:1] == "#" {
 			if prefix != "" {
-				formatedOutput += regexSharp.ReplaceAllString(metric, "${1}" + prefix) + "\n"
+				formatedOutput += regexSharp.ReplaceAllString(metric, "${1}"+prefix) + "\n"
 			} else {
 				formatedOutput += fmt.Sprintf("%s\n", metric)
 			}
